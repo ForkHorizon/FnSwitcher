@@ -10,13 +10,13 @@ import CoreGraphics
 import Foundation
 
 nonisolated final class FnEventTap {
-    private let onFnPress: @MainActor () -> Void
+    private let onFnPress: @MainActor (String) -> Void
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
     private var fnIsDown = false
     private var handledCurrentFnPress = false
 
-    init(onFnPress: @escaping @MainActor () -> Void) {
+    init(onFnPress: @escaping @MainActor (String) -> Void) {
         self.onFnPress = onFnPress
     }
 
@@ -106,8 +106,9 @@ nonisolated final class FnEventTap {
 
             if firstFnDownEvent && !hasOtherModifier {
                 handledCurrentFnPress = true
-                Task { @MainActor [onFnPress] in
-                    onFnPress()
+                let detail = "keyCode=\(keyCode) flags=\(flags.rawValue)"
+                Task { @MainActor [onFnPress, detail] in
+                    onFnPress(detail)
                 }
             }
 

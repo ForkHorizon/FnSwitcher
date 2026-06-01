@@ -8,23 +8,27 @@ macOS can sometimes miss the first Globe/Fn press when switching languages, requ
 
 Download the latest DMG from the GitHub release:
 
-[AppleLocalizationSwitcher 1.0](https://github.com/ForkHorizon/AppleLocalizationSwitcher/releases/tag/v1.0)
+[AppleLocalizationSwitcher 1.1](https://github.com/ForkHorizon/AppleLocalizationSwitcher/releases/tag/v1.1)
 
 DMG SHA-256:
 
 ```text
-8ef689cb6e4f56e097856f72c73c41ccdf3cc347aedf68a321bde67d0e2b74c6
+78cbcb565fa632b1c9214ecb2f2f76c796f1c092de54b589fd916b28b2d061bb
 ```
 
 Open the DMG, drag `AppleLocalizationSwitcher.app` into `Applications`, then launch it.
 
 ## Permissions
 
-The app requires macOS Accessibility permission so it can catch the Globe/Fn key globally.
+The app requires macOS Accessibility and Input Monitoring permissions so it can catch the Globe/Fn key globally.
 
 On first run, open the menu bar item and choose `Open Accessibility Settings`, then enable AppleLocalizationSwitcher in:
 
 `System Settings` -> `Privacy & Security` -> `Accessibility`
+
+Then choose `Open Input Monitoring Settings` and enable AppleLocalizationSwitcher in:
+
+`System Settings` -> `Privacy & Security` -> `Input Monitoring`
 
 ## Usage
 
@@ -33,6 +37,7 @@ On first run, open the menu bar item and choose `Open Accessibility Settings`, t
 - Use `Switch Now` from the menu to switch manually.
 - Use `Enable Fn Switcher` to turn the key handling on or off.
 - Use `Launch at Login` to start the utility automatically after login.
+- Use `Copy Diagnostics` if Globe/Fn does not behave reliably; it copies monitor and permission state.
 - If fewer than two selectable keyboard input sources are enabled, the app shows a disabled status and lets Globe/Fn pass through.
 
 ## Build

@@ -13,6 +13,13 @@ struct MenuContentView: View {
     var body: some View {
         Text("Current: \(controller.currentSourceName)")
         Text(controller.statusText)
+        Text("Accessibility: \(controller.accessibilityTrusted ? "Granted" : "Required")")
+        Text("Input Monitoring: \(controller.inputMonitoringPermission.rawValue)")
+        Text("CGEvent: \(controller.tapInstalled ? "Active" : "Inactive")")
+        Text("IOHID: \(controller.hidMonitorInstalled ? "Active" : "Inactive")")
+        Text("Last Trigger: \(controller.lastTriggerSource)")
+        Text("Last Target: \(controller.lastTargetName)")
+        Text("Last Error: \(controller.lastError)")
 
         Divider()
 
@@ -49,6 +56,18 @@ struct MenuContentView: View {
             controller.requestAccessibilityPermission()
         } label: {
             Label("Open Accessibility Settings", systemImage: "accessibility")
+        }
+
+        Button {
+            controller.requestInputMonitoringPermission()
+        } label: {
+            Label("Open Input Monitoring Settings", systemImage: "keyboard.badge.eye")
+        }
+
+        Button {
+            controller.copyDiagnostics()
+        } label: {
+            Label("Copy Diagnostics", systemImage: "doc.on.doc")
         }
 
         Divider()
