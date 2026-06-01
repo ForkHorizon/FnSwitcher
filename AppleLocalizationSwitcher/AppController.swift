@@ -41,6 +41,7 @@ final class AppController: ObservableObject {
         self?.handleGlobeKeyPress(from: .ioHID, detail: detail)
     }
     private var permissionTimer: Timer?
+    private var launchPermissionRequestTask: Task<Void, Never>?
     private var notificationTokens: [NSObjectProtocol] = []
     private var pendingCGFallbackTask: Task<Void, Never>?
     private var reapplyTasks: [Task<Void, Never>] = []
@@ -57,12 +58,12 @@ final class AppController: ObservableObject {
         inputSources.count >= 2
     }
 
-    var statusText: String {
-        if !accessibilityTrusted {
-            if inputMonitoringPermission == .granted {
-                return lastActionMessage
-            }
+    var needsKeyboardPermissions: Bool {
+        !accessibilityTrusted || inputMonitoringPermission != .granted
+    }
 
+    var statusText: String {
+        if needsKeyboardPermissions {
             return "Keyboard permissions required"
         }
 
@@ -108,12 +109,14 @@ final class AppController: ObservableObject {
         observeInputSourceChanges()
         startPermissionPolling()
         configureMonitors()
+        requestMissingKeyboardPermissionsOnLaunch()
     }
 
     @MainActor
     deinit {
         eventTap.stop()
         globeKeyMonitor.stop()
+        launchPermissionRequestTask?.cancel()
         pendingCGFallbackTask?.cancel()
         reapplyTasks.forEach { $0.cancel() }
         permissionTimer?.invalidate()
@@ -124,11 +127,11 @@ final class AppController: ObservableObject {
         isSwitcherEnabled = enabled
         UserDefaults.standard.set(enabled, forKey: DefaultsKey.switcherEnabled)
 
-        if enabled && !accessibilityTrusted && inputMonitoringPermission != .granted {
-            requestAccessibilityPermission()
+        if enabled && needsKeyboardPermissions {
+            requestKeyboardPermissions(openSettings: true, reason: "switcher enabled")
+        } else {
+            configureMonitors()
         }
-
-        configureMonitors()
     }
 
     func setLaunchAtLoginEnabled(_ enabled: Bool) {
@@ -148,26 +151,21 @@ final class AppController: ObservableObject {
     }
 
     func requestAccessibilityPermission() {
-        let key = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
-        let options = [key: true] as CFDictionary
-        accessibilityTrusted = AXIsProcessTrustedWithOptions(options)
-
-        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
-            NSWorkspace.shared.open(url)
-        }
-
+        accessibilityTrusted = requestAccessibilityPrompt()
+        openAccessibilitySettings()
+        refreshAccessibilityTrust()
         configureMonitors()
     }
 
     func requestInputMonitoringPermission() {
-        _ = GlobeKeyMonitor.requestInputMonitoringAccess()
-
-        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent") {
-            NSWorkspace.shared.open(url)
-        }
-
+        _ = requestInputMonitoringPrompt()
+        openInputMonitoringSettings()
         refreshInputMonitoringPermission()
         configureMonitors()
+    }
+
+    func requestKeyboardPermissions() {
+        requestKeyboardPermissions(openSettings: true, reason: "menu action")
     }
 
     func refreshInputSources() {
@@ -327,6 +325,89 @@ final class AppController: ObservableObject {
 
     private func refreshLaunchAtLoginStatus() {
         launchAtLoginEnabled = SMAppService.mainApp.status == .enabled
+    }
+
+    private func requestMissingKeyboardPermissionsOnLaunch() {
+        launchPermissionRequestTask?.cancel()
+        launchPermissionRequestTask = Task { @MainActor [weak self] in
+            do {
+                try await Task.sleep(nanoseconds: 500_000_000)
+            } catch {
+                return
+            }
+
+            guard let self, self.isSwitcherEnabled, self.canSwitch, self.needsKeyboardPermissions else {
+                return
+            }
+
+            self.requestKeyboardPermissions(openSettings: false, reason: "launch")
+        }
+    }
+
+    private func requestKeyboardPermissions(openSettings: Bool, reason: String) {
+        refreshAccessibilityTrust()
+        refreshInputMonitoringPermission()
+
+        guard needsKeyboardPermissions else {
+            lastActionMessage = "Keyboard permissions granted"
+            appendDiagnostic("Keyboard permission request skipped: already granted")
+            configureMonitors()
+            return
+        }
+
+        let needsAccessibility = !accessibilityTrusted
+        let needsInputMonitoring = inputMonitoringPermission != .granted
+        appendDiagnostic("Requesting keyboard permissions reason=\(reason) accessibility=\(needsAccessibility) inputMonitoring=\(needsInputMonitoring)")
+
+        if needsAccessibility {
+            accessibilityTrusted = requestAccessibilityPrompt()
+        }
+
+        if needsInputMonitoring {
+            _ = requestInputMonitoringPrompt()
+        }
+
+        refreshAccessibilityTrust()
+        refreshInputMonitoringPermission()
+
+        if openSettings && needsKeyboardPermissions {
+            openFirstMissingPermissionSettings()
+        }
+
+        lastActionMessage = needsKeyboardPermissions ? "Grant keyboard permissions in System Settings" : "Keyboard permissions granted"
+        configureMonitors()
+    }
+
+    @discardableResult
+    private func requestAccessibilityPrompt() -> Bool {
+        let key = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
+        let options = [key: true] as CFDictionary
+        return AXIsProcessTrustedWithOptions(options)
+    }
+
+    @discardableResult
+    private func requestInputMonitoringPrompt() -> Bool {
+        GlobeKeyMonitor.requestInputMonitoringAccess()
+    }
+
+    private func openFirstMissingPermissionSettings() {
+        if !accessibilityTrusted {
+            openAccessibilitySettings()
+        } else if inputMonitoringPermission != .granted {
+            openInputMonitoringSettings()
+        }
+    }
+
+    private func openAccessibilitySettings() {
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
+            NSWorkspace.shared.open(url)
+        }
+    }
+
+    private func openInputMonitoringSettings() {
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent") {
+            NSWorkspace.shared.open(url)
+        }
     }
 
     private func configureMonitors() {

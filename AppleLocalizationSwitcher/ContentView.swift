@@ -23,6 +23,16 @@ struct MenuContentView: View {
 
         Divider()
 
+        if controller.needsKeyboardPermissions {
+            Button {
+                controller.requestKeyboardPermissions()
+            } label: {
+                Label("Request Keyboard Permissions", systemImage: "lock.open")
+            }
+
+            Divider()
+        }
+
         Button {
             controller.switchToNextInputSource()
         } label: {

@@ -8,32 +8,34 @@ macOS can sometimes miss the first Globe/Fn press when switching languages, requ
 
 Download the latest DMG from the GitHub release:
 
-[AppleLocalizationSwitcher 1.1](https://github.com/ForkHorizon/AppleLocalizationSwitcher/releases/tag/v1.1)
+[AppleLocalizationSwitcher 1.2](https://github.com/ForkHorizon/AppleLocalizationSwitcher/releases/tag/v1.2)
 
 DMG SHA-256:
 
 ```text
-78cbcb565fa632b1c9214ecb2f2f76c796f1c092de54b589fd916b28b2d061bb
+8d23b64120cda4acbb3bbb04a2976180bf7b29bdba530bdd1faeaf1be89bfd60
 ```
 
 Open the DMG, drag `AppleLocalizationSwitcher.app` into `Applications`, then launch it.
 
 ## Permissions
 
-The app requires macOS Accessibility and Input Monitoring permissions so it can catch the Globe/Fn key globally.
+The app requires macOS Accessibility and Input Monitoring permissions so it can catch the Globe/Fn key globally. When the Fn switcher is enabled, the app requests missing permissions on launch.
 
-On first run, open the menu bar item and choose `Open Accessibility Settings`, then enable AppleLocalizationSwitcher in:
+On first run, use `Request Keyboard Permissions` from the menu bar item if macOS does not show the prompts automatically. Then enable AppleLocalizationSwitcher in:
 
 `System Settings` -> `Privacy & Security` -> `Accessibility`
 
-Then choose `Open Input Monitoring Settings` and enable AppleLocalizationSwitcher in:
+and:
 
 `System Settings` -> `Privacy & Security` -> `Input Monitoring`
 
 ## Usage
 
 - The app runs only in the menu bar.
+- Reopening the app while it is already running exits the duplicate instance and keeps a single menu bar item.
 - Press Globe/Fn once to switch to the next enabled keyboard input source.
+- Use `Request Keyboard Permissions` if the menu shows `Keyboard permissions required`.
 - Use `Switch Now` from the menu to switch manually.
 - Use `Enable Fn Switcher` to turn the key handling on or off.
 - Use `Launch at Login` to start the utility automatically after login.
