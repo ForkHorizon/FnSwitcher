@@ -8,12 +8,12 @@ macOS can sometimes miss the first Globe/Fn press when switching languages, requ
 
 Download the latest DMG from the GitHub release:
 
-[FnSwitcher 1.4](https://github.com/ForkHorizon/AppleLocalizationSwitcher/releases/tag/v1.4)
+[FnSwitcher 1.5](https://github.com/ForkHorizon/AppleLocalizationSwitcher/releases/tag/v1.5)
 
 DMG SHA-256:
 
 ```text
-e7b0e4cd44aef7a821f3f80378d410ea28b7c2deb7a759e65f2189bdeba54625
+1e0fae4daaa9e339fd4bda0892a65ca988bcdbe40510bcf03dc61fa345e32f0f
 ```
 
 Open the DMG, drag `FnSwitcher.app` into `Applications`, then launch it.

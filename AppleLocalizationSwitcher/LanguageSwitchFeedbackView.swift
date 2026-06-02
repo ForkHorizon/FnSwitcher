@@ -24,24 +24,19 @@ struct LanguageSwitchFeedbackView: View {
     private static let inactiveBackground = Color.white
 
     @ObservedObject var model: LanguageSwitchFeedbackContentModel
-    @Namespace private var glassNamespace
 
     var body: some View {
         let snapshot = model.snapshot
 
-        GlassEffectContainer(spacing: 2) {
-            HStack(spacing: 2) {
-                ForEach(snapshot.displayedSources) { source in
-                    sourceChip(source, selectedSourceID: snapshot.selectedSourceID)
-                }
+        HStack(spacing: 2) {
+            ForEach(snapshot.displayedSources) { source in
+                sourceChip(source, selectedSourceID: snapshot.selectedSourceID)
             }
-            .padding(2)
-            .frame(width: snapshot.panelSize.width, height: Self.containerHeight)
-            .background(Self.inactiveBackground)
-            .clipShape(Capsule())
-            .glassEffect(.regular.interactive(false), in: Capsule())
-            .glassEffectTransition(.materialize)
         }
+        .padding(2)
+        .frame(width: snapshot.panelSize.width, height: Self.containerHeight)
+        .background(Self.inactiveBackground)
+        .clipShape(Capsule(), style: FillStyle(eoFill: false, antialiased: false))
         .frame(width: snapshot.panelSize.width, height: snapshot.panelSize.height)
         .animation(.smooth(duration: 0.16), value: snapshot)
     }
@@ -57,7 +52,6 @@ struct LanguageSwitchFeedbackView: View {
             .frame(width: Self.itemWidth, height: Self.itemHeight)
             .background(isSelected ? Self.activeBackground : Self.inactiveBackground)
             .clipShape(RoundedRectangle(cornerRadius: Self.itemCornerRadius, style: .continuous))
-            .glassEffectID(source.id, in: glassNamespace)
             .accessibilityLabel(source.name)
     }
 

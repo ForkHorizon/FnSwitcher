@@ -148,33 +148,35 @@ final class LanguageSwitchFeedbackController {
         panel.isReleasedWhenClosed = false
         panel.isOpaque = false
         panel.backgroundColor = .clear
-        panel.hasShadow = true
+        panel.hasShadow = false
+        panel.invalidateShadow()
         panel.ignoresMouseEvents = true
         panel.hidesOnDeactivate = false
         panel.level = .statusBar
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle]
         panel.alphaValue = 0
 
-        let visualEffectView = LanguageSwitchVisualEffectView(frame: NSRect(origin: .zero, size: size))
-        visualEffectView.autoresizingMask = [.width, .height]
-        visualEffectView.material = .hudWindow
-        visualEffectView.blendingMode = .behindWindow
-        visualEffectView.state = .active
+        let containerView = NSView(frame: NSRect(origin: .zero, size: size))
+        containerView.autoresizingMask = [.width, .height]
+        containerView.wantsLayer = true
+        containerView.layer?.backgroundColor = NSColor.clear.cgColor
+        containerView.layer?.allowsEdgeAntialiasing = false
 
         let hostingController = NSHostingController(rootView: LanguageSwitchFeedbackView(model: model))
         hostingController.view.translatesAutoresizingMaskIntoConstraints = false
         hostingController.view.wantsLayer = true
         hostingController.view.layer?.backgroundColor = NSColor.clear.cgColor
+        hostingController.view.layer?.allowsEdgeAntialiasing = false
 
-        visualEffectView.addSubview(hostingController.view)
+        containerView.addSubview(hostingController.view)
         NSLayoutConstraint.activate([
-            hostingController.view.leadingAnchor.constraint(equalTo: visualEffectView.leadingAnchor),
-            hostingController.view.trailingAnchor.constraint(equalTo: visualEffectView.trailingAnchor),
-            hostingController.view.topAnchor.constraint(equalTo: visualEffectView.topAnchor),
-            hostingController.view.bottomAnchor.constraint(equalTo: visualEffectView.bottomAnchor)
+            hostingController.view.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
+            hostingController.view.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
+            hostingController.view.topAnchor.constraint(equalTo: containerView.topAnchor),
+            hostingController.view.bottomAnchor.constraint(equalTo: containerView.bottomAnchor)
         ])
 
-        panel.contentView = visualEffectView
+        panel.contentView = containerView
         self.hostingController = hostingController
         self.panel = panel
         return panel
@@ -191,6 +193,7 @@ final class LanguageSwitchFeedbackController {
             y: visibleFrame.midY - size.height / 2
         )
         panel.setFrame(NSRect(origin: origin, size: size), display: true)
+        panel.invalidateShadow()
     }
 
     private func screenForPresentation() -> NSScreen? {
@@ -278,27 +281,4 @@ final class LanguageSwitchFeedbackController {
 private final class LanguageSwitchFeedbackPanel: NSPanel {
     override var canBecomeKey: Bool { false }
     override var canBecomeMain: Bool { false }
-}
-
-private final class LanguageSwitchVisualEffectView: NSVisualEffectView {
-    override init(frame frameRect: NSRect) {
-        super.init(frame: frameRect)
-        configure()
-    }
-
-    required init?(coder: NSCoder) {
-        super.init(coder: coder)
-        configure()
-    }
-
-    override func layout() {
-        super.layout()
-        layer?.cornerRadius = bounds.height / 2
-    }
-
-    private func configure() {
-        wantsLayer = true
-        layer?.cornerRadius = 20
-        layer?.masksToBounds = true
-    }
 }
