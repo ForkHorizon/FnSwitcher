@@ -45,9 +45,14 @@ final class AppController: ObservableObject {
     private let inputSourceService = InputSourceService()
     private let languagePersistenceStore: LanguagePersistenceStore
     private let languageSwitchFeedbackController = LanguageSwitchFeedbackController()
-    private lazy var eventTap = FnEventTap { [weak self] detail in
-        self?.handleGlobeKeyPress(from: .cgEvent, detail: detail)
-    }
+    private lazy var eventTap = FnEventTap(
+        onFnPress: { [weak self] detail in
+            self?.handleGlobeKeyPress(from: .cgEvent, detail: detail)
+        },
+        onTypingAfterSwitch: { [weak self] detail in
+            self?.handleTypingAfterSwitch(detail: detail)
+        }
+    )
     private lazy var globeKeyMonitor = GlobeKeyMonitor { [weak self] detail in
         self?.handleGlobeKeyPress(from: .ioHID, detail: detail)
     }
@@ -57,6 +62,7 @@ final class AppController: ObservableObject {
     private var workspaceNotificationTokens: [NSObjectProtocol] = []
     private var pendingCGFallbackTask: Task<Void, Never>?
     private var reapplyTasks: [Task<Void, Never>] = []
+    private var pendingUserSwitchRetryCount = 0
     private var inputSourceSuppressionTasks: [Task<Void, Never>] = []
     private var inputSourceNotificationSuppressions: [String: Int] = [:]
     private var lastCommittedGlobePressTime: TimeInterval = 0
@@ -142,6 +148,7 @@ final class AppController: ObservableObject {
         launchPermissionRequestTask?.cancel()
         pendingCGFallbackTask?.cancel()
         reapplyTasks.forEach { $0.cancel() }
+        pendingUserSwitchRetryCount = 0
         inputSourceSuppressionTasks.forEach { $0.cancel() }
         languageSwitchFeedbackController.close()
         permissionTimer?.invalidate()
@@ -284,6 +291,17 @@ final class AppController: ObservableObject {
         commitGlobeKeyPress(from: source, detail: detail)
     }
 
+    private func handleTypingAfterSwitch(detail: String) {
+        guard pendingUserSwitchRetryCount > 0 else {
+            return
+        }
+
+        reapplyTasks.forEach { $0.cancel() }
+        reapplyTasks.removeAll()
+        pendingUserSwitchRetryCount = 0
+        appendDiagnostic("Cancelled pending switch retries after typing: \(detail)")
+    }
+
     private func commitGlobeKeyPress(from source: GlobeKeyEventSource, detail: String) {
         let now = ProcessInfo.processInfo.systemUptime
         let isCrossMonitorDuplicate = lastCommittedGlobePressSource != source && now - lastCommittedGlobePressTime < 0.12
@@ -322,6 +340,7 @@ final class AppController: ObservableObject {
         let generation = switchGeneration
         reapplyTasks.forEach { $0.cancel() }
         reapplyTasks.removeAll()
+        pendingUserSwitchRetryCount = 0
 
         lastTriggerSource = trigger.rawValue
         lastTargetName = nextSource.name
@@ -336,7 +355,10 @@ final class AppController: ObservableObject {
             showsFeedback: true
         )
 
-        for delay in [0.08, 0.18, 0.35] {
+        let retryDelays = [0.08, 0.18, 0.35]
+        pendingUserSwitchRetryCount = retryDelays.count
+
+        for delay in retryDelays {
             let task = Task { @MainActor [weak self, nextSource] in
                 do {
                     try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
@@ -344,22 +366,46 @@ final class AppController: ObservableObject {
                     return
                 }
 
-                guard self?.switchGeneration == generation else {
+                guard let self, self.switchGeneration == generation else {
                     return
                 }
 
-                self?.apply(
+                self.pendingUserSwitchRetryCount = max(0, self.pendingUserSwitchRetryCount - 1)
+                self.reapplyUserSwitchIfNeeded(
                     target: nextSource,
                     phase: "\(Int(delay * 1000))ms reapply",
-                    generation: generation,
-                    reason: .userSwitch,
-                    showsFeedback: false
+                    generation: generation
                 )
             }
             reapplyTasks.append(task)
         }
 
         configureMonitors()
+    }
+
+    private func reapplyUserSwitchIfNeeded(
+        target: KeyboardInputSource,
+        phase: String,
+        generation: Int
+    ) {
+        guard generation == switchGeneration else {
+            return
+        }
+
+        refreshCurrentInputSource()
+
+        guard currentInputSource?.id != target.id else {
+            appendDiagnostic("\(phase): skipped reapply; \(target.name) already active")
+            return
+        }
+
+        apply(
+            target: target,
+            phase: phase,
+            generation: generation,
+            reason: .userSwitch,
+            showsFeedback: false
+        )
     }
 
     private func apply(
@@ -704,6 +750,7 @@ final class AppController: ObservableObject {
     private func cancelPendingLanguageRestores() {
         reapplyTasks.forEach { $0.cancel() }
         reapplyTasks.removeAll()
+        pendingUserSwitchRetryCount = 0
     }
 
     private func suppressNextInputSourceChangeNotification(for inputSourceID: String) {
